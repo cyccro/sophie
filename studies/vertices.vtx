@@ -1,0 +1,4 @@
+Vertex::new(math::Vec3(-0.5, 0.5, 0.0), math::Rgba(0.0, 1.0, 0.0, 1.0)),
+Vertex::new(math::Vec3(0.5, 0.5, 0.0), math::Rgba(1.0, 0.0, 0.0, 1.0)),
+Vertex::new(math::Vec3(-0.5, -0.5, 0.0), math::Rgba(0.0, 0.0, 1.0, 1.0)),
+Vertex::new(math::Vec3(0.5, -0.5, 0.0), math::Rgba(1.0, 1.0, 1.0, 1.0)),

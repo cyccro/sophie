@@ -1,0 +1,90 @@
+While struggling to draw a triangle with wgpu in this project, i got several errors, first of all: buffer layout. When i created the buffer layout for the struct Vertex which is defined as:
+pub trait VertexLayout: Sized {
+    fn layout() -> wgpu::VertexBufferLayout<'static>;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, butemuck::Zeroable)]
+struct Vertex {
+	position:Vec,
+	color: Rgba,
+	..., inside impl const ATTRIBUTES: [wgpu::VertexAttribute; 2] = vertex_attr_array![0 => Float32x4,1 => Float32x4];
+}
+impl VertexLayout for Vertex {
+    fn layout() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &Self::ATTRIBUTES,
+        }
+    }
+}
+where attributes were:
+the error was that the first attribute was being understood as a vec4<f32> due to Float32x4 = 4 f32 numbers; while the shader input was the following:
+struct Input {
+    @location(0) position: vec3<f32>,
+    @location(1) color: vec4<f32>
+}
+in case, its data size would be wrongly passed and so, due to wrong things that happened in the wgpu internals whose i dont know what are, the vertex count would be wrong. Since by the attribute definition it was expecting 8 * sizeof<f32>() and i passed the stride to be sizeof<Self>() where Self = Vertex, it was passing a wrong stride, so the first float of the N + 1 attribute would be understood as the last float of the N attribute.
+Explaining with something better looking, i did the following:
+
+buffer, you gotta expect
+x    y    z    w    r    g    b    a
+f32, f32, f32, f32, f32, f32, f32, f32
+
+and the byte stride is
+7 * sizeof<f32>()
+
+let v = Vertex::new(Vec3(0.5, 0.5, 0), Rgba(1.0, 0.0, 0.0, 0.0));
+let vv = v.clone();
+
+when passing the vertices v and vv it got
+
+let s = sizeof(v/*and vv*/); // 7 * sizeof<f32>();
+buffer.set_data(vec![v, vv].as_slice().with_butemuck_cast());
+/*defined
+x = v.position.x;
+y = v.position.y;
+z = v.position.z;
+next data = rgba;
+w = rgba.r;
+r = rgba.g;
+g = rgba.b;
+b = rgba.a;
+a = waiting
+*/
+as buffer got v and vv,
+a = vv.position.x;
+and then repeat. As the vertices now didnt complete due to:
+x = vv.position.y;
+y = vv.position.z;
+w = vv.color.r;
+r = vv.color.g;
+g = vv.color.b;
+b = vv.color.a;
+a = waiting
+it only understands that it got 1 complete vertex and then it will only expect one vertex to be drawn.
+
+CCW and back culling.
+The default pattern is to draw things with CCW and back culling i saw, but i was attempting to draw the following triangle
+let (a,b,c) = (
+	Vertex::new(math::Vec3(0.5, -0.5, 0.0), math::Rgba(1.0, 0.0, 1.0, 0.0)),
+	Vertex::new(math::Vec3(-0.5, -0.5, 0.0), math::Rgba(1.0, 1.0, 1.0, 1.0)),
+	Vertex::new(math::Vec3(0.0, 0.5, 0.0), math::Rgba(0.0, 1.0, 1.0, 1.0)),
+);
+let vertices = vec![a,b,c];
+in case it would be something like
+  c
+b   a
+CCW draws counter clockwise this means that it should draw a to c, c to b and b to a, but it seems to draw by the order, this said, it will draw, a to b, b to c and c to a, but damn, the one i gave is going clockwise, so, as it tried to draw counter clockwise and the one i gave is clockwise, it simply does not draw. be aware of it. One that works is
+
+let (a,b,c) = (
+	Vertex::new(math::Vec3(0.5, -0.5, 0.0), math::Rgba(1.0, 0.0, 1.0, 0.0)),
+	Vertex::new(math::Vec3(0.0, 0.5, 0.0), math::Rgba(0.0, 1.0, 1.0, 1.0)),
+	Vertex::new(math::Vec3(-0.5, -0.5, 0.0), math::Rgba(1.0, 1.0, 1.0, 1.0)),
+);
+let vertices = vec![a,b,c];
+
+that now can be seen as:
+  b
+c   a
+which in fact is counter clockwise
