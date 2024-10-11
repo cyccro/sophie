@@ -1,25 +1,17 @@
 use std::f32::consts::PI;
 
-use bytemuck::{Pod, Zeroable};
 use na::{Matrix4, Point3, Vector3};
 use nalgebra as na;
 use wgpu::{Device, Queue};
 
 use crate::{
     math::OPENGL_TO_WGPU_MATRIX,
-    sr_core::{
-        helpers::{BufferHelper, HasBindgroup},
-        UniformBuffer,
-    },
+    objects::UniformUpdateable,
+    sr_core::helpers::{BufferHelper, HasBindgroup},
 };
 
-use super::UniformUpdateable;
+use super::CameraInternal;
 
-#[repr(C)]
-#[derive(Pod, Zeroable, Debug, Clone, Copy)]
-pub struct CameraData {
-    data: [[f32; 4]; 4],
-}
 #[derive(Debug)]
 pub struct PerspectiveConfigs {
     pub fov: f32,
@@ -29,33 +21,12 @@ pub struct PerspectiveConfigs {
     pub mat: na::Matrix4<f32>,
 }
 #[derive(Debug)]
-pub struct CameraInternal {
-    projection: na::Matrix4<f32>,
-    uniform: UniformBuffer,
-    data: CameraData,
-    perspective: PerspectiveConfigs,
-}
-#[derive(Debug)]
 pub struct PerspectiveCamera {
-    internal: CameraInternal,
+    internal: CameraInternal<PerspectiveConfigs>,
     direction: na::Vector3<f32>,
     target: na::Point3<f32>,
     position: na::Point3<f32>,
     needs_update: bool,
-}
-pub struct OrthogonalCamera {
-    flags: u32,
-    pub uniform: UniformBuffer,
-}
-pub enum Camera {
-    Perspective(PerspectiveCamera),
-    Ortho(OrthogonalCamera),
-}
-
-impl CameraData {
-    pub fn update(&mut self, data: [[f32; 4]; 4]) {
-        self.data = data;
-    }
 }
 
 impl PerspectiveConfigs {
@@ -83,14 +54,14 @@ impl PerspectiveCamera {
             na::Matrix4::look_at_rh(&position, &target, &na::Vector3::new(0.0, 1.0, 0.0));
         let perspective = configs.mat;
         let mat = OPENGL_TO_WGPU_MATRIX * perspective * projection;
-        let data = CameraData { data: mat.data.0 };
+        let data = super::CameraData { data: mat.data.0 };
         let buffer = BufferHelper::uniform_buffer(device, &[data]);
         Self {
             internal: CameraInternal {
                 data,
                 uniform: buffer,
                 projection,
-                perspective: configs,
+                config: configs,
             },
             needs_update: false,
             direction: (target - position).normalize(),
@@ -135,16 +106,12 @@ impl PerspectiveCamera {
         self.needs_update = true;
     }
     pub fn get_view_projection_mat(&mut self) -> na::Matrix4<f32> {
-        let perspective = self.internal.perspective.mat;
+        let perspective = self.internal.config.mat;
         let projection = self.projection();
         return OPENGL_TO_WGPU_MATRIX * (&perspective) * projection;
     }
 }
-impl HasBindgroup for OrthogonalCamera {
-    fn info(&self, device: &Device) -> crate::sr_core::helpers::BindGroupInfo {
-        self.uniform.info(device)
-    }
-}
+
 impl HasBindgroup for PerspectiveCamera {
     fn info(&self, device: &Device) -> crate::sr_core::helpers::BindGroupInfo {
         self.internal.uniform.info(device)
@@ -160,14 +127,6 @@ impl UniformUpdateable for PerspectiveCamera {
                 .uniform
                 .update(queue, bytemuck::cast_slice(&[data]));
             self.needs_update = false;
-        }
-    }
-}
-impl HasBindgroup for Camera {
-    fn info(&self, device: &Device) -> crate::sr_core::helpers::BindGroupInfo {
-        match self {
-            Camera::Perspective(c) => c.info(device),
-            Camera::Ortho(c) => c.info(device),
         }
     }
 }
