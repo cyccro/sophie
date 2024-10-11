@@ -1,6 +1,15 @@
+use std::path::Path;
+
 use wgpu::{
     rwh::{HasDisplayHandle, HasWindowHandle},
     Adapter, Device, Instance, Queue, ShaderModule, Surface, SurfaceError, TextureFormat,
+};
+
+use crate::{
+    errors::SophieError,
+    objects::camera::{PerspectiveCamera, PerspectiveConfigs},
+    sophie::SophieResult,
+    sr_core::texture::Texture2D,
 };
 
 use super::super::helpers::ShaderHelper;
@@ -17,27 +26,35 @@ pub struct WgpuState<'a> {
     programs: Vec<SophieProgram>,
 }
 impl<'a> WgpuState<'a> {
-    pub async fn new(window: &sdl2::video::Window) -> Self {
+    pub async fn new(window: &sdl2::video::Window) -> SophieResult<Self> {
         let size = window.size();
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             ..Default::default()
         });
         let surface = unsafe {
+            let Ok(rdh) = window.display_handle() else {
+                return Err(SophieError::new(0x1000));
+            };
+            let Ok(rwh) = window.window_handle() else {
+                return Err(SophieError::new(0x1000));
+            };
             instance.create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
-                raw_display_handle: window.display_handle().unwrap().into(),
-                raw_window_handle: window.window_handle().unwrap().into(),
+                raw_display_handle: rdh.into(),
+                raw_window_handle: rwh.into(),
             })
         }
-        .unwrap();
-        let adapter = instance
+        .map_err(|_| SophieError::new(0x130000))?;
+        let Some(adapter) = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 force_fallback_adapter: false,
                 compatible_surface: Some(&surface),
                 ..Default::default()
             })
             .await
-            .unwrap();
+        else {
+            return Err(SophieError::new(0x140000));
+        };
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
@@ -52,9 +69,8 @@ impl<'a> WgpuState<'a> {
                     .map(std::path::Path::new),
             )
             .await
-            .unwrap();
+            .map_err(|_| SophieError::new(0x150000))?;
         let capabilities = surface.get_capabilities(&adapter);
-
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: TextureFormat::Bgra8UnormSrgb,
@@ -66,7 +82,7 @@ impl<'a> WgpuState<'a> {
             desired_maximum_frame_latency: 2,
         };
         surface.configure(&device, &config);
-        Self {
+        Ok(Self {
             window: window.clone(),
             surface,
             config,
@@ -75,7 +91,10 @@ impl<'a> WgpuState<'a> {
             queue,
             device,
             programs: Vec::new(),
-        }
+        })
+    }
+    pub fn device(&self) -> &Device {
+        &self.device
     }
     pub fn add_program(&mut self, program: SophieProgram) {
         self.programs.push(program);
@@ -83,7 +102,7 @@ impl<'a> WgpuState<'a> {
     pub fn add_program_from(
         &mut self,
         shader: &ShaderModule,
-        descriptor: Option<SophieBufferDataDescriptor>,
+        descriptor: Option<SophieBufferDataDescriptor<'a>>,
     ) {
         self.programs
             .push(SophieProgram::new(&self.device, shader, descriptor));
@@ -91,12 +110,47 @@ impl<'a> WgpuState<'a> {
     pub fn add_program_from_source(
         &mut self,
         shader: &str,
-        descriptor: Option<SophieBufferDataDescriptor>,
+        descriptor: Option<SophieBufferDataDescriptor<'a>>,
     ) {
         self.add_program_from(
             &ShaderHelper::create_shader(&self.device, shader),
             descriptor,
         );
+    }
+    pub fn create_shader_from_file(&self, path: &std::path::Path) -> SophieResult<ShaderModule> {
+        ShaderHelper::create_from_file(&self.device, path)
+    }
+    pub fn create_texture(&self, bytes: &[u8]) -> SophieResult<Texture2D> {
+        Texture2D::new(&self.queue, &self.device, bytes)
+    }
+    pub fn create_texture_from_file(&self, path: &Path) -> SophieResult<Texture2D> {
+        Texture2D::from_file(&self.queue, &self.device, path)
+    }
+    pub async fn create_texture_async(&self, path: &Path) -> SophieResult<Texture2D> {
+        Texture2D::from_file_async(&self.queue, &self.device, path).await
+    }
+    pub fn queue(&self) -> &Queue {
+        &self.queue
+    }
+    pub fn create_perspective_camera(
+        &self,
+        position: na::Point3<f32>,
+        target: na::Point3<f32>,
+        fov: f32,
+        far: f32,
+        near: f32,
+    ) -> PerspectiveCamera {
+        PerspectiveCamera::new(
+            &self.device,
+            target,
+            position,
+            PerspectiveConfigs::new(
+                fov,
+                far,
+                near,
+                self.config.width as f32 / self.config.height as f32,
+            ),
+        )
     }
     pub fn render(&self) -> Result<(), SurfaceError> {
         let txt = self.surface.get_current_texture()?;
@@ -124,8 +178,13 @@ impl<'a> WgpuState<'a> {
             });
             for program in self.programs.iter() {
                 rpass.set_pipeline(program.pipeline());
+
+                for (idx, info) in program.bind_groups().iter().enumerate() {
+                    rpass.set_bind_group(idx as u32, info.group(), &[]);
+                }
                 if let Some(buffer) = program.buffer() {
                     rpass.set_vertex_buffer(0, buffer.slice(..));
+
                     if let Some(buffer) = program.index_buffer() {
                         rpass.set_index_buffer(buffer.slice(..), wgpu::IndexFormat::Uint16);
                         rpass.draw_indexed(0..program.indices_len() as u32, 0, 0..1)

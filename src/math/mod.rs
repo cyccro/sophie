@@ -1,6 +1,6 @@
-mod color;
-mod vec2;
-mod vec3;
-pub use color::*;
-pub use vec2::Vec2;
-pub use vec3::Vec3;
+mod mat;
+mod rgba;
+mod vec;
+pub use mat::*;
+pub use rgba::Rgba;
+pub use vec::*;

@@ -1,0 +1,24 @@
+Y will be used, X whaterver, N(literal number) = gotta be N
+//0xYXXXXX
+0x0XXXXX -> Fatal
+0x1XXXXX -> Warn
+0x2XXXXX -> Info
+... vou ver
+
+// Creation stuff. Mostly are fatal; 0xXYXXXX
+0xX1XXXX = Couldnt get sophie display handle
+0xX2XXXX = Couldnt get sophie window handle
+0xX3XXXX = Couldnt create Wgpu surface from Sdl2 window
+0xX4XXXX = Failed to get WGPU adapter
+0xX5XXXX = Failed to get WGPU device and queue
+
+//Wgpu data. uniforms, textures, etc 0xX0YYXX.
+0xX001XX = Failed to create Wgpu shader
+0xX002XX = Failed to create Wgpu texture
+0xX003XX = Failed to create Perspective Camera
+0xX004XX = Failed to create Ortho Camera
+//Reasons 0xXXXXYY; YY will be used
+0xXXXXX0 = Wrong Path
+0xXXXX01 = Invalid UTF-8 string
+0xXXXX02 = Invalid Bytes
+0xXXXX03 = Value isn't None

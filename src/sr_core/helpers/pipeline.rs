@@ -1,11 +1,18 @@
 use wgpu::{ColorWrites, Device, RenderPipeline, ShaderModule, TextureFormat, VertexBufferLayout};
 
+use super::BindGroupInfo;
 pub struct PipelineHelper;
 impl PipelineHelper {
-    pub fn create_pipeline_layout(device: &Device) -> wgpu::PipelineLayout {
+    pub fn create_pipeline_layout(device: &Device, info: &[BindGroupInfo]) -> wgpu::PipelineLayout {
         device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[],
+            bind_group_layouts: &{
+                let mut vec = Vec::with_capacity(info.len());
+                for info in info {
+                    vec.push(info.layout())
+                }
+                vec
+            },
             push_constant_ranges: &[],
         })
     }
@@ -56,28 +63,25 @@ impl PipelineHelper {
         device: &Device,
         layout: &wgpu::PipelineLayout,
         shader: &ShaderModule,
-        buffers: Option<Vec<VertexBufferLayout>>,
+        buffers: Option<&Vec<VertexBufferLayout>>,
     ) -> RenderPipeline {
         if let Some(buffers) = buffers {
-            let mut layouts = Vec::with_capacity(buffers.len());
-            for buffer in buffers {
-                layouts.push(buffer);
-            }
             device.create_render_pipeline(&Self::create_pipeline_descriptor(
                 layout,
                 shader,
-                layouts.as_slice(),
+                buffers.as_slice(),
             ))
         } else {
             device.create_render_pipeline(&Self::create_pipeline_descriptor(layout, shader, &[]))
         }
     }
-    pub fn create_pipeline<'a>(
+    pub fn create_pipeline(
         device: &Device,
-        shader: &'a ShaderModule,
-        buffers: Option<Vec<VertexBufferLayout>>,
+        shader: &ShaderModule,
+        buffers: Option<&Vec<VertexBufferLayout>>,
+        infos: &[BindGroupInfo],
     ) -> RenderPipeline {
-        let layout = Self::create_pipeline_layout(device);
+        let layout = Self::create_pipeline_layout(device, infos);
         let pipeline = Self::create_render_pipeline(device, &layout, shader, buffers);
         pipeline
     }
