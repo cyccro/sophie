@@ -3,6 +3,7 @@ use std::fmt::Display;
 pub type ErrorId = u32;
 #[derive(Debug)]
 pub struct SophieError(ErrorId);
+pub type SophieResult<T> = Result<T, SophieError>;
 
 impl SophieError {
     //check list.txt to understand the logic

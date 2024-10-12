@@ -1,0 +1,2 @@
+Mostly of where im looking up for doing what im doing is on https://sotrh.github.io/learn-wgpu/, even tho im working with stuff by my self and creating my own stuff.
+I pretend doing some kind of documentation later but, whatever, it's nothing big yet

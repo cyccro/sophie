@@ -1,8 +1,11 @@
 use wgpu::SurfaceError;
 
 use crate::{
-    objects::{camera::PerspectiveCamera, UniformUpdateable},
-    sophie::{Sophie, SophieHandler},
+    entities::Entities,
+    objects::{
+        camera::PerspectiveCamera, drawables::Mesh, SophieKeyboardControllable, UniformUpdateable,
+    },
+    sophie::{KeydownData, Sophie, SophieHandler},
 };
 
 pub enum TestErrors {
@@ -11,42 +14,50 @@ pub enum TestErrors {
 
 pub struct TestHandler1 {
     pub camera: PerspectiveCamera,
-    pub objects: Vec<Box<dyn UniformUpdateable>>,
+    pub entities: Entities,
 }
 
 impl SophieHandler<TestErrors> for TestHandler1 {
     fn update(
         &mut self,
-        dt: std::time::Duration,
-        sophie: &mut Sophie<TestErrors>,
+        _dt: std::time::Duration,
+        sophie: &mut Sophie,
     ) -> crate::sophie::SophieEventResult<TestErrors> {
-        //self.camera.translate_nums(0.004, 0.01, 0.0);
-        self.camera.update(sophie.wgpu.queue());
-        match sophie.wgpu.render() {
+        self.entities.update(sophie.queue(), &mut self.camera);
+        match sophie.wgpu.render(&self.meshes()) {
             Ok(_) => crate::sophie::SophieEventResult::Success,
             Err(e) => crate::sophie::SophieEventResult::Error(TestErrors::Surface(e)),
         }
     }
-    fn mouse_enter(
+    fn on_keydown(
         &mut self,
-        sophie: &mut Sophie<TestErrors>,
+        _sophie: &mut Sophie,
+        key: KeydownData,
     ) -> crate::sophie::SophieEventResult<TestErrors> {
+        self.camera.on_keydown(&key);
         crate::sophie::SophieEventResult::Success
     }
-    fn resize(
-        &mut self,
-        sophie: &mut Sophie<TestErrors>,
-        x: i32,
-        y: i32,
-    ) -> crate::sophie::SophieEventResult<TestErrors> {
+    fn on_keypress(&mut self, sophie: &mut Sophie) -> crate::sophie::SophieEventResult<TestErrors> {
+        for key in sophie.pressed_keys().iter() {
+            self.camera.on_keydown(&KeydownData {
+                scancode: Some(key.clone()),
+                kmod: sophie.pressed_keys().modf,
+            })
+        }
         crate::sophie::SophieEventResult::Success
     }
-    fn fallback_error(&mut self, err: TestErrors, sophie: &mut Sophie<TestErrors>) {
+    fn fallback_error(&mut self, err: TestErrors, sophie: &mut Sophie) {
         match err {
             TestErrors::Surface(e) => {
                 println!("{e:#?} eita lasqueira");
             }
         }
         sophie.should_exit();
+    }
+}
+
+impl TestHandler1 {
+    pub fn meshes(&self) -> &Vec<Mesh> {
+        self.entities.meshes()
     }
 }

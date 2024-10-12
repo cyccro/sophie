@@ -2,14 +2,16 @@ extern crate nalgebra as na;
 
 use std::process::ExitCode;
 
-use na::Point3;
+use entities::Entities;
+use na::{Point3, UnitQuaternion, Vector3};
+use objects::drawables::{DrawableUpdateable, Mesh};
 use sophie::Sophie;
 use sr_core::{
-    helpers::{BindGroupInfo, HasBindgroup},
-    SophieBufferDataDescriptor, TexturedVertex, Vertices,
+    helpers::{BindGroupInfoKind, HasBindgroup},
+    SophieProgramDescriptor, TexturedVertex, Vertices,
 };
 use tests::TestHandler1;
-use tracing_subscriber;
+mod entities;
 mod errors;
 mod math;
 mod objects;
@@ -25,7 +27,7 @@ async fn main() -> ExitCode {
     let mut sophie = Sophie::new(&sdl, "Window", (1080, 720)).await.unwrap();
     let shader = sophie
         .wgpu
-        .create_shader_from_file(std::path::Path::new("./src/shaders/test4.wgsl"))
+        .create_shader_from_file(std::path::Path::new("./src/shaders/test5.wgsl"))
         .unwrap();
     let img = sophie
         .wgpu
@@ -37,28 +39,35 @@ async fn main() -> ExitCode {
         TexturedVertex::new(math::Vec3(-0.5, -0.5, 0.0), math::Vec2(0.0, 1.0)),
         TexturedVertex::new(math::Vec3(0.5, -0.5, 0.0), math::Vec2(1.0, 1.0)),
     ]);
+    let layout = vertices.layout();
     let camera = sophie.wgpu.create_perspective_camera(
-        Point3::new(0.0, 1.0, 0.0),
+        Point3::new(0.0, 0.0, 1.0),
         Point3::origin(),
-        120.0,
+        40.0,
         1000.0,
         0.1,
     );
-    let info = vec![img.info(sophie.device()), camera.info(sophie.device())];
-    sophie.wgpu.add_program_from(
+    sophie.wgpu.set_program_from(
         &shader,
-        Some(SophieBufferDataDescriptor {
-            attribute_deffinitions: None,
-            vertices,
-            info,
-            indices: Some(vec![2, 1, 0, 3, 1, 2]),
+        Some(SophieProgramDescriptor {
+            attribute_deffinitions: Some(vec![layout]),
+            info: vec![img.info(sophie.device())],
+            kinds: vec![BindGroupInfoKind::Texture, BindGroupInfoKind::Uniform],
         }),
+    );
+    let mesh = Mesh::new(
+        sophie.device(),
+        Vector3::new(0.0, 0.0, -1.0),
+        UnitQuaternion::identity(),
+        Vector3::new(1.5, 1.0, 1.0),
+        vertices,
+        vec![2, 1, 0, 3, 1, 2],
     );
     sophie.listen(
         &sdl,
         &mut TestHandler1 {
             camera,
-            objects: vec![],
+            entities: Entities::with_meshes(vec![mesh]),
         },
     )
 }
@@ -106,9 +115,13 @@ mod testing {
     use crate::{
         math,
         sophie::{SophieEventResult, SophieHandler},
-        sr_core::{SophieBufferDataDescriptor, TexturedVertex, Vertex, Vertices},
+        sr_core::{
+            helpers::HasBindgroup, SophieProgramDescriptor, TexturedVertex, Vertex, Vertices,
+        },
+        tests::TestHandler1,
         Sophie,
     };
+    use na::Point3;
     use sdl2::Sdl;
     async fn test_init() -> Result<(Sophie<'static, TestErrs>, Sdl), ()> {
         let sdl = sdl2::init().map_err(|_| ())?;
@@ -170,6 +183,48 @@ mod testing {
         );
         assert_eq!(std::mem::size_of::<[TexturedVertex; 4]>(), (12 + 8) * 4);
         sophie.listen(&sdl, &mut TestHandler);
+        Ok(())
+    }
+    async fn draw_sprite() -> Result<(), ()> {
+        let sdl = sdl2::init().unwrap();
+        let mut sophie = Sophie::new(&sdl, "Window", (1080, 720)).await.unwrap();
+        let shader = sophie
+            .wgpu
+            .create_shader_from_file(std::path::Path::new("./src/shaders/test4.wgsl"))
+            .unwrap();
+        let img = sophie
+            .wgpu
+            .create_texture_from_file(std::path::Path::new("./images/anime.jpeg"))
+            .unwrap();
+        let vertices = Vertices::Textured(vec![
+            TexturedVertex::new(math::Vec3(-0.5, 0.5, 0.0), math::Vec2(0.0, 0.0)),
+            TexturedVertex::new(math::Vec3(0.5, 0.5, 0.0), math::Vec2(1.0, 0.0)),
+            TexturedVertex::new(math::Vec3(-0.5, -0.5, 0.0), math::Vec2(0.0, 1.0)),
+            TexturedVertex::new(math::Vec3(0.5, -0.5, 0.0), math::Vec2(1.0, 1.0)),
+        ]);
+        let camera = sophie.wgpu.create_perspective_camera(
+            Point3::new(0.0, 1.0, 1.0),
+            Point3::origin(),
+            40.0,
+            1000.0,
+            0.1,
+        );
+        sophie.wgpu.add_program_from(
+            &shader,
+            Some(SophieProgramDescriptor {
+                attribute_deffinitions: None,
+                vertices,
+                info: vec![img.info(sophie.device()), camera.info(sophie.device())],
+                indices: Some(vec![2, 1, 0, 3, 1, 2]),
+            }),
+        );
+        sophie.listen(
+            &sdl,
+            &mut TestHandler1 {
+                camera,
+                objects: vec![],
+            },
+        );
         Ok(())
     }
 }
