@@ -15,6 +15,7 @@ pub struct TexturedVertex {
     pub position: Vec3,
     pub uv: Vec2,
 }
+#[derive(Debug, Clone)]
 pub enum Vertices {
     Vertex(Vec<Vertex>),
     Textured(Vec<TexturedVertex>),

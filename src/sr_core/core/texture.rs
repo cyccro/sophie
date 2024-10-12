@@ -7,8 +7,7 @@ use wgpu::{
 };
 
 use crate::{
-    errors::SophieError,
-    sophie::SophieResult,
+    errors::{SophieError, SophieResult},
     sr_core::helpers::{BindGroupInfo, BindGroupKind, HasBindgroup},
 };
 

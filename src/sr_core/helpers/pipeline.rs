@@ -1,18 +1,36 @@
 use wgpu::{ColorWrites, Device, RenderPipeline, ShaderModule, TextureFormat, VertexBufferLayout};
 
-use super::BindGroupInfo;
+use super::{BindGroupHelper, BindGroupInfoKind};
 pub struct PipelineHelper;
+pub enum BindGroupKind {
+    Texture,
+    Uniform,
+}
 impl PipelineHelper {
-    pub fn create_pipeline_layout(device: &Device, info: &[BindGroupInfo]) -> wgpu::PipelineLayout {
+    pub fn create_pipeline_layout(
+        device: &Device,
+        info: &Vec<BindGroupInfoKind>,
+    ) -> wgpu::PipelineLayout {
+        let vec = {
+            let mut vec = Vec::with_capacity(info.len());
+            for kind in info {
+                vec.push(match kind {
+                    BindGroupInfoKind::Uniform => BindGroupHelper::create_uniform_layout(device),
+                    BindGroupInfoKind::Texture => BindGroupHelper::create_layout_texture(device),
+                })
+            }
+            vec
+        };
+        let layouts = {
+            let mut layouts = Vec::with_capacity(vec.len());
+            for i in vec.iter() {
+                layouts.push(i)
+            }
+            layouts
+        };
         device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &{
-                let mut vec = Vec::with_capacity(info.len());
-                for info in info {
-                    vec.push(info.layout())
-                }
-                vec
-            },
+            bind_group_layouts: &layouts,
             push_constant_ranges: &[],
         })
     }
@@ -79,7 +97,7 @@ impl PipelineHelper {
         device: &Device,
         shader: &ShaderModule,
         buffers: Option<&Vec<VertexBufferLayout>>,
-        infos: &[BindGroupInfo],
+        infos: &Vec<BindGroupInfoKind>,
     ) -> RenderPipeline {
         let layout = Self::create_pipeline_layout(device, infos);
         let pipeline = Self::create_render_pipeline(device, &layout, shader, buffers);

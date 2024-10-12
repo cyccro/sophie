@@ -2,7 +2,7 @@ use std::io::Read;
 
 use wgpu::Device;
 
-use crate::{errors::SophieError, sophie::SophieResult};
+use crate::errors::{SophieError, SophieResult};
 
 pub struct ShaderHelper;
 impl ShaderHelper {

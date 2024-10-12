@@ -1,20 +1,18 @@
 use std::path::Path;
 
+use crate::{
+    errors::{SophieError, SophieResult},
+    objects::{
+        camera::{PerspectiveCamera, PerspectiveConfigs},
+        drawables::Mesh,
+    },
+    sr_core::{helpers::ShaderHelper, texture::Texture2D, SophieProgram, SophieProgramDescriptor},
+};
 use wgpu::{
     rwh::{HasDisplayHandle, HasWindowHandle},
     Adapter, Device, Instance, Queue, ShaderModule, Surface, SurfaceError, TextureFormat,
 };
 
-use crate::{
-    errors::SophieError,
-    objects::camera::{PerspectiveCamera, PerspectiveConfigs},
-    sophie::SophieResult,
-    sr_core::texture::Texture2D,
-};
-
-use super::super::helpers::ShaderHelper;
-
-use super::{SophieBufferDataDescriptor, SophieProgram};
 pub struct WgpuState<'a> {
     instance: Instance,
     surface: Surface<'a>,
@@ -24,6 +22,7 @@ pub struct WgpuState<'a> {
     config: wgpu::SurfaceConfiguration,
     window: sdl2::video::Window,
     programs: Vec<SophieProgram>,
+    current_program: Option<SophieProgram>,
 }
 impl<'a> WgpuState<'a> {
     pub async fn new(window: &sdl2::video::Window) -> SophieResult<Self> {
@@ -90,11 +89,26 @@ impl<'a> WgpuState<'a> {
             adapter,
             queue,
             device,
+            current_program: None,
             programs: Vec::new(),
         })
     }
     pub fn device(&self) -> &Device {
         &self.device
+    }
+    pub fn queue(&self) -> &Queue {
+        &self.queue
+    }
+    pub fn set_program(&mut self, program: SophieProgram) {
+        self.current_program = Some(program);
+    }
+    pub fn set_program_from(
+        &mut self,
+        shader: &ShaderModule,
+        descriptor: Option<SophieProgramDescriptor>,
+    ) {
+        let program = SophieProgram::new(&self.device, shader, descriptor);
+        self.set_program(program);
     }
     pub fn add_program(&mut self, program: SophieProgram) {
         self.programs.push(program);
@@ -102,7 +116,7 @@ impl<'a> WgpuState<'a> {
     pub fn add_program_from(
         &mut self,
         shader: &ShaderModule,
-        descriptor: Option<SophieBufferDataDescriptor<'a>>,
+        descriptor: Option<SophieProgramDescriptor>,
     ) {
         self.programs
             .push(SophieProgram::new(&self.device, shader, descriptor));
@@ -110,7 +124,7 @@ impl<'a> WgpuState<'a> {
     pub fn add_program_from_source(
         &mut self,
         shader: &str,
-        descriptor: Option<SophieBufferDataDescriptor<'a>>,
+        descriptor: Option<SophieProgramDescriptor>,
     ) {
         self.add_program_from(
             &ShaderHelper::create_shader(&self.device, shader),
@@ -128,9 +142,6 @@ impl<'a> WgpuState<'a> {
     }
     pub async fn create_texture_async(&self, path: &Path) -> SophieResult<Texture2D> {
         Texture2D::from_file_async(&self.queue, &self.device, path).await
-    }
-    pub fn queue(&self) -> &Queue {
-        &self.queue
     }
     pub fn create_perspective_camera(
         &self,
@@ -152,7 +163,7 @@ impl<'a> WgpuState<'a> {
             ),
         )
     }
-    pub fn render(&self) -> Result<(), SurfaceError> {
+    pub fn render(&self, meshes: &Vec<Mesh>) -> Result<(), SurfaceError> {
         let txt = self.surface.get_current_texture()?;
         let view = txt
             .texture
@@ -176,21 +187,14 @@ impl<'a> WgpuState<'a> {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
-            for program in self.programs.iter() {
+            if let Some(ref program) = self.current_program {
+                let groups = program.bind_groups();
                 rpass.set_pipeline(program.pipeline());
-
-                for (idx, info) in program.bind_groups().iter().enumerate() {
-                    rpass.set_bind_group(idx as u32, info.group(), &[]);
+                for (idx, bindgroup) in groups.iter().enumerate() {
+                    rpass.set_bind_group(idx as u32, bindgroup.group(), &[]);
                 }
-                if let Some(buffer) = program.buffer() {
-                    rpass.set_vertex_buffer(0, buffer.slice(..));
-
-                    if let Some(buffer) = program.index_buffer() {
-                        rpass.set_index_buffer(buffer.slice(..), wgpu::IndexFormat::Uint16);
-                        rpass.draw_indexed(0..program.indices_len() as u32, 0, 0..1)
-                    } else {
-                        rpass.draw(0..program.vertices_len() as u32, 0..1);
-                    }
+                for mesh in meshes {
+                    mesh.draw((groups.len()) as u32, &mut rpass);
                 }
             }
         }
