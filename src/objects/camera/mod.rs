@@ -7,8 +7,6 @@ pub struct CameraData {
 #[derive(Debug)]
 pub struct CameraInternal<T> {
     projection: na::Matrix4<f32>,
-    uniform: UniformBuffer,
-    data: CameraData,
     config: T,
 }
 impl CameraData {
@@ -20,5 +18,3 @@ mod ortho;
 mod perspective;
 use bytemuck::{Pod, Zeroable};
 pub use perspective::*;
-
-use crate::sr_core::UniformBuffer;

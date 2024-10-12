@@ -50,17 +50,13 @@ impl PerspectiveCamera {
         position: na::Point3<f32>,
         configs: PerspectiveConfigs,
     ) -> Self {
-        let projection =
-            na::Matrix4::look_at_rh(&position, &target, &na::Vector3::new(0.0, 1.0, 0.0));
-        let perspective = configs.mat;
-        let mat = OPENGL_TO_WGPU_MATRIX * perspective * projection;
-        let data = super::CameraData { data: mat.data.0 };
-        let buffer = BufferHelper::uniform_buffer(device, &[data]);
         Self {
             internal: CameraInternal {
-                data,
-                uniform: buffer,
-                projection,
+                projection: na::Matrix4::look_at_rh(
+                    &position,
+                    &target,
+                    &na::Vector3::new(0.0, 1.0, 0.0),
+                ),
                 config: configs,
             },
             needs_update: false,
@@ -98,8 +94,26 @@ impl PerspectiveCamera {
         self.position.z += z;
         self.request_update();
     }
+    pub fn direction(&self) -> na::Vector3<f32> {
+        self.direction.clone()
+    }
+    pub fn right(&self) -> na::Vector3<f32> {
+        self.direction.normalize().cross(&na::Vector3::y())
+    }
     pub fn translate_forward(&mut self, scale: f32) {
         self.position += self.direction * scale;
+        self.request_update();
+    }
+    pub fn translate_left(&mut self, scale: f32) {
+        self.position -= self.right() * scale;
+        self.request_update();
+    }
+    pub fn translate_right(&mut self, scale: f32) {
+        self.position += self.right() * scale;
+        self.request_update();
+    }
+    pub fn translate_backward(&mut self, scale: f32) {
+        self.position -= self.direction * scale;
         self.request_update();
     }
     pub fn request_update(&mut self) {
@@ -109,24 +123,5 @@ impl PerspectiveCamera {
         let perspective = self.internal.config.mat;
         let projection = self.projection();
         return OPENGL_TO_WGPU_MATRIX * (&perspective) * projection;
-    }
-}
-
-impl HasBindgroup for PerspectiveCamera {
-    fn info(&self, device: &Device) -> crate::sr_core::helpers::BindGroupInfo {
-        self.internal.uniform.info(device)
-    }
-}
-impl UniformUpdateable for PerspectiveCamera {
-    fn update(&mut self, queue: &Queue) {
-        if self.needs_update {
-            let mat = self.get_view_projection_mat().data.0;
-            let mut data = self.internal.data;
-            data.update(mat);
-            self.internal
-                .uniform
-                .update(queue, bytemuck::cast_slice(&[data]));
-            self.needs_update = false;
-        }
     }
 }
