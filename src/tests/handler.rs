@@ -1,10 +1,9 @@
+use na::{UnitQuaternion, Vector3};
 use wgpu::SurfaceError;
 
 use crate::{
     entities::Entities,
-    objects::{
-        camera::PerspectiveCamera, drawables::Mesh, SophieKeyboardControllable, UniformUpdateable,
-    },
+    objects::{camera::PerspectiveCamera, drawables::Mesh, SophieKeyboardControllable},
     sophie::{KeydownData, Sophie, SophieHandler},
 };
 
@@ -24,6 +23,13 @@ impl SophieHandler<TestErrors> for TestHandler1 {
         sophie: &mut Sophie,
     ) -> crate::sophie::SophieEventResult<TestErrors> {
         self.entities.update(sophie.queue(), &mut self.camera);
+        self.entities
+            .get_mut_mesh(0)
+            .unwrap()
+            .rotate(UnitQuaternion::from_axis_angle(
+                &Vector3::z_axis(),
+                (1.0f32).to_radians(),
+            ));
         match sophie.wgpu.render(&self.meshes()) {
             Ok(_) => crate::sophie::SophieEventResult::Success,
             Err(e) => crate::sophie::SophieEventResult::Error(TestErrors::Surface(e)),

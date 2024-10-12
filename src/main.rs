@@ -4,7 +4,7 @@ use std::process::ExitCode;
 
 use entities::Entities;
 use na::{Point3, UnitQuaternion, Vector3};
-use objects::drawables::{DrawableUpdateable, Mesh};
+use objects::drawables::Mesh;
 use sophie::Sophie;
 use sr_core::{
     helpers::{BindGroupInfoKind, HasBindgroup},
@@ -59,7 +59,7 @@ async fn main() -> ExitCode {
         sophie.device(),
         Vector3::new(0.0, 0.0, -1.0),
         UnitQuaternion::identity(),
-        Vector3::new(1.5, 1.0, 1.0),
+        Vector3::new(1.0, 1.0, 1.0),
         vertices,
         vec![2, 1, 0, 3, 1, 2],
     );

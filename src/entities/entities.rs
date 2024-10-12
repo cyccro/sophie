@@ -1,11 +1,8 @@
-use std::ops::Index;
-
 use wgpu::Queue;
 
 use crate::objects::{
     camera::PerspectiveCamera,
     drawables::{DrawableUpdateable, Mesh},
-    SophieKeyboardControllable,
 };
 
 pub struct Entities {

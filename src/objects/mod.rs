@@ -1,13 +1,9 @@
 pub mod camera;
 pub mod drawables;
 pub mod implementations;
-use wgpu::Queue;
 
 use crate::sophie::KeydownData;
 
-pub trait UniformUpdateable {
-    fn update(&mut self, queue: &Queue);
-}
 pub trait SophieKeyboardControllable {
     fn on_keydown(&mut self, data: &KeydownData);
     fn on_keyup(&mut self, data: &KeydownData);

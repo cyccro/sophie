@@ -1,12 +1,9 @@
 use na::{Matrix4, UnitQuaternion, Vector3};
 use wgpu::{BindGroup, RenderPass};
 
-use crate::{
-    objects::{camera::PerspectiveCamera, UniformUpdateable},
-    sr_core::{
-        helpers::{BindGroupHelper, BufferHelper},
-        UniformBuffer, Vertices,
-    },
+use crate::sr_core::{
+    helpers::{BindGroupHelper, BufferHelper},
+    UniformBuffer, Vertices,
 };
 
 use super::DrawableUpdateable;

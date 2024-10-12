@@ -2,8 +2,6 @@ use std::collections::HashSet;
 
 use sdl2::keyboard::{Mod, Scancode};
 
-use super::{Sophie, SophieEventResult, SophieHandler};
-
 #[derive(Debug)]
 pub struct KeydownData {
     pub scancode: Option<Scancode>,

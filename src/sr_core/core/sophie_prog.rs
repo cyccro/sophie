@@ -1,4 +1,4 @@
-use crate::sr_core::helpers::{BindGroupInfo, BindGroupInfoKind, BindGroupKind, PipelineHelper};
+use crate::sr_core::helpers::{BindGroupInfo, BindGroupInfoKind, PipelineHelper};
 
 pub struct SophieProgram {
     pipeline: wgpu::RenderPipeline,

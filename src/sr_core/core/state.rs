@@ -152,7 +152,6 @@ impl<'a> WgpuState<'a> {
         near: f32,
     ) -> PerspectiveCamera {
         PerspectiveCamera::new(
-            &self.device,
             target,
             position,
             PerspectiveConfigs::new(

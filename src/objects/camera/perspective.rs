@@ -2,13 +2,8 @@ use std::f32::consts::PI;
 
 use na::{Matrix4, Point3, Vector3};
 use nalgebra as na;
-use wgpu::{Device, Queue};
 
-use crate::{
-    math::OPENGL_TO_WGPU_MATRIX,
-    objects::UniformUpdateable,
-    sr_core::helpers::{BufferHelper, HasBindgroup},
-};
+use crate::math::OPENGL_TO_WGPU_MATRIX;
 
 use super::CameraInternal;
 
@@ -45,7 +40,6 @@ impl PerspectiveConfigs {
 
 impl PerspectiveCamera {
     pub fn new(
-        device: &Device,
         target: na::Point3<f32>,
         position: na::Point3<f32>,
         configs: PerspectiveConfigs,

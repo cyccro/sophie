@@ -2,10 +2,7 @@ use wgpu::{ColorWrites, Device, RenderPipeline, ShaderModule, TextureFormat, Ver
 
 use super::{BindGroupHelper, BindGroupInfoKind};
 pub struct PipelineHelper;
-pub enum BindGroupKind {
-    Texture,
-    Uniform,
-}
+
 impl PipelineHelper {
     pub fn create_pipeline_layout(
         device: &Device,

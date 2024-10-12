@@ -17,27 +17,22 @@ pub trait HasBindgroup {
 pub struct BindGroupInfo {
     pub layout: BindGroupLayout,
     pub group: BindGroup,
-    pub kind: BindGroupInfoKind,
 }
 impl BindGroupInfo {
     pub fn new(device: &Device, kind: &BindGroupKind) -> Self {
-        let (layout, group, kind) = match kind {
+        let (layout, group) = match kind {
             BindGroupKind::TEXTURE(txt_view, sampler) => {
                 let layout = BindGroupHelper::create_layout_texture(device);
                 let group = BindGroupHelper::create_texture(device, txt_view, sampler);
-                (layout, group, BindGroupInfoKind::Texture)
+                (layout, group)
             }
             BindGroupKind::UNIFORM(buffer) => {
                 let layout = BindGroupHelper::create_uniform_layout(device);
                 let group = BindGroupHelper::create_uniform(device, buffer);
-                (layout, group, BindGroupInfoKind::Uniform)
+                (layout, group)
             }
         };
-        Self {
-            layout,
-            group,
-            kind,
-        }
+        Self { layout, group }
     }
     pub fn layout(&self) -> &BindGroupLayout {
         &self.layout
