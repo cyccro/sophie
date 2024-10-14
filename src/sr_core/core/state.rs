@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 use crate::{
     errors::{SophieError, SophieResult},
@@ -20,9 +20,7 @@ pub struct WgpuState<'a> {
     device: Device,
     queue: Queue,
     config: wgpu::SurfaceConfiguration,
-    window: sdl2::video::Window,
-    programs: Vec<SophieProgram>,
-    current_program: Option<SophieProgram>,
+    programs: HashMap<String, SophieProgram>,
 }
 impl<'a> WgpuState<'a> {
     pub async fn new(window: &sdl2::video::Window) -> SophieResult<Self> {
@@ -82,15 +80,13 @@ impl<'a> WgpuState<'a> {
         };
         surface.configure(&device, &config);
         Ok(Self {
-            window: window.clone(),
             surface,
             config,
             instance,
             adapter,
             queue,
             device,
-            current_program: None,
-            programs: Vec::new(),
+            programs: HashMap::new(),
         })
     }
     pub fn device(&self) -> &Device {
@@ -99,34 +95,29 @@ impl<'a> WgpuState<'a> {
     pub fn queue(&self) -> &Queue {
         &self.queue
     }
-    pub fn set_program(&mut self, program: SophieProgram) {
-        self.current_program = Some(program);
-    }
-    pub fn set_program_from(
-        &mut self,
-        shader: &ShaderModule,
-        descriptor: Option<SophieProgramDescriptor>,
-    ) {
-        let program = SophieProgram::new(&self.device, shader, descriptor);
-        self.set_program(program);
-    }
-    pub fn add_program(&mut self, program: SophieProgram) {
-        self.programs.push(program);
+
+    pub fn add_program(&mut self, id: &str, program: SophieProgram) {
+        self.programs.insert(id.to_owned(), program);
     }
     pub fn add_program_from(
         &mut self,
+        id: &str,
         shader: &ShaderModule,
-        descriptor: Option<SophieProgramDescriptor>,
+        descriptor: Option<&SophieProgramDescriptor>,
     ) {
-        self.programs
-            .push(SophieProgram::new(&self.device, shader, descriptor));
+        self.programs.insert(
+            id.to_owned(),
+            SophieProgram::new(&self.device, shader, descriptor),
+        );
     }
     pub fn add_program_from_source(
         &mut self,
+        id: &str,
         shader: &str,
-        descriptor: Option<SophieProgramDescriptor>,
+        descriptor: Option<&SophieProgramDescriptor>,
     ) {
         self.add_program_from(
+            id,
             &ShaderHelper::create_shader(&self.device, shader),
             descriptor,
         );
@@ -186,14 +177,21 @@ impl<'a> WgpuState<'a> {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
-            if let Some(ref program) = self.current_program {
-                let groups = program.bind_groups();
-                rpass.set_pipeline(program.pipeline());
-                for (idx, bindgroup) in groups.iter().enumerate() {
-                    rpass.set_bind_group(idx as u32, bindgroup.group(), &[]);
-                }
+            if let Some(mut current_id) = meshes.get(0).map(|m| m.material_id()) {
+                let mut current_program = self.programs.get(current_id);
                 for mesh in meshes {
-                    mesh.draw((groups.len()) as u32, &mut rpass);
+                    if mesh.material_id() != current_id {
+                        current_id = mesh.material_id();
+                        if let Some(program) = self.programs.get(current_id) {
+                            current_program = Some(program);
+                        } else {
+                            current_program = None;
+                        }
+                    }
+                    if let Some(program) = current_program {
+                        rpass.set_pipeline(program.pipeline());
+                        mesh.draw(&mut rpass);
+                    }
                 }
             }
         }

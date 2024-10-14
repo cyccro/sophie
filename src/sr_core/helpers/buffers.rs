@@ -48,11 +48,14 @@ impl BufferHelper {
             usage: wgpu::BufferUsages::VERTEX,
         })
     }
+    pub fn uniform<T: Pod>(device: &wgpu::Device, data: &[T]) -> wgpu::Buffer {
+        device.create_buffer_init(&BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(data),
+            usage: wgpu::BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+        })
+    }
     pub fn uniform_buffer<T: Pod>(device: &wgpu::Device, data: &[T]) -> UniformBuffer {
-        UniformBuffer::new(Self::create_buffer(
-            device,
-            data,
-            BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-        ))
+        UniformBuffer::new(Self::uniform(device, data))
     }
 }

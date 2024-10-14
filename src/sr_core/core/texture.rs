@@ -1,23 +1,14 @@
 use std::path::Path;
 
 use image::GenericImageView;
-use wgpu::{
-    BindGroup, Device, Extent3d, Queue, RenderPass, Sampler, Texture, TextureDescriptor,
-    TextureView,
-};
+use wgpu::{Device, Extent3d, Queue, Sampler, Texture, TextureDescriptor, TextureView};
 
-use crate::{
-    errors::{SophieError, SophieResult},
-    sr_core::helpers::{BindGroupInfo, BindGroupKind, HasBindgroup},
-};
+use crate::errors::{SophieError, SophieResult};
 
 #[derive(Debug)]
 pub struct Texture2D {
-    width: u32,
-    height: u32,
     view: TextureView,
     wgpu_texture: Texture,
-    pub info: BindGroupInfo,
     sampler: Sampler,
 }
 
@@ -80,35 +71,25 @@ impl Texture2D {
             mipmap_filter: wgpu::FilterMode::Nearest,
             ..Default::default()
         });
-        let info = BindGroupInfo::new(device, &BindGroupKind::TEXTURE(&view, &sampler));
         Ok(Self {
             view,
             sampler,
             wgpu_texture,
-            width: dimensions.0,
-            height: dimensions.1,
-            info,
         })
     }
-
+    pub fn width(&self) -> u32 {
+        self.wgpu_texture.width()
+    }
+    pub fn height(&self) -> u32 {
+        self.wgpu_texture.height()
+    }
+    pub fn wgpu_texture(&self) -> &Texture {
+        &self.wgpu_texture
+    }
     pub fn view(&self) -> &TextureView {
         &self.view
     }
     pub fn sampler(&self) -> &Sampler {
         &self.sampler
-    }
-    pub fn bind_group(&self) -> &BindGroup {
-        self.info.group()
-    }
-    pub fn bind(&self, rpass: &mut RenderPass) {
-        rpass.set_bind_group(0, &self.info.group(), &[]);
-    }
-}
-impl HasBindgroup for Texture2D {
-    fn info(&self, device: &Device) -> BindGroupInfo {
-        BindGroupInfo::new(
-            device,
-            &BindGroupKind::TEXTURE(&self.view(), self.sampler()),
-        )
     }
 }

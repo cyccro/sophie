@@ -1,0 +1,1 @@
+In a shader texture it will always wait for texture to be of group 0 and binding 0 and sampler to be group 0 and binding 1

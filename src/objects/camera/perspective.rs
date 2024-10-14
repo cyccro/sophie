@@ -82,6 +82,10 @@ impl PerspectiveCamera {
     pub fn target(&self) -> &Point3<f32> {
         &self.target
     }
+    pub fn set_target(&mut self, position: &Point3<f32>) {
+        self.target = *position;
+        self.direction = (self.position - self.target).normalize();
+    }
     pub fn translate_nums(&mut self, x: f32, y: f32, z: f32) {
         self.position.x += x;
         self.position.y += y;
@@ -92,7 +96,9 @@ impl PerspectiveCamera {
         self.direction.clone()
     }
     pub fn right(&self) -> na::Vector3<f32> {
-        self.direction.normalize().cross(&na::Vector3::y())
+        self.direction
+            .cross(&na::Vector3::new(0.0, 1.0, 0.0))
+            .normalize()
     }
     pub fn translate_forward(&mut self, scale: f32) {
         self.position += self.direction * scale;

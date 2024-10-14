@@ -17,8 +17,11 @@ Y will be used, X whaterver, N(literal number) = gotta be N
 0xX002XX = Failed to create Wgpu texture
 0xX003XX = Failed to create Perspective Camera
 0xX004XX = Failed to create Ortho Camera
+0xX005XX = Failed to get Material
+
 //Reasons 0xXXXXYY; YY will be used
 0xXXXXX0 = Wrong Path
 0xXXXX01 = Invalid UTF-8 string
 0xXXXX02 = Invalid Bytes
 0xXXXX03 = Value isn't None
+0xXXXX04 = Value wasn't created and/or stored

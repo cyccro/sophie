@@ -44,6 +44,7 @@ impl SophieError {
             2 => "Failed to create Wgpu texture",
             3 => "Failed to create Sophie Perspective Camera",
             4 => "Failed to create Sophie Orthogonal Camera",
+            5 => "Failed to get Material",
             _ => "Todo!",
         }
         .to_string()
@@ -54,6 +55,7 @@ impl SophieError {
             1 => "Invalid UTF-8 encoding",
             2 => "Invalid Bytes",
             3 => "Value not None",
+            4 => "Value wasn't created and/or stored",
             _ => "Todo!",
         }
         .to_string()

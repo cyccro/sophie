@@ -12,8 +12,15 @@ impl PipelineHelper {
             let mut vec = Vec::with_capacity(info.len());
             for kind in info {
                 vec.push(match kind {
-                    BindGroupInfoKind::Uniform => BindGroupHelper::create_uniform_layout(device),
-                    BindGroupInfoKind::Texture => BindGroupHelper::create_layout_texture(device),
+                    BindGroupInfoKind::Uniform(binding) => {
+                        BindGroupHelper::create_uniform_layout(device, *binding)
+                    }
+                    BindGroupInfoKind::VfUniform(binding) => {
+                        BindGroupHelper::create_uniform_vf_layout(device, *binding)
+                    }
+                    BindGroupInfoKind::Texture(binding) => {
+                        BindGroupHelper::create_layout_texture(device, *binding)
+                    }
                 })
             }
             vec

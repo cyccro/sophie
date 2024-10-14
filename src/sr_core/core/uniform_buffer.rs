@@ -1,7 +1,5 @@
 use bytemuck::Pod;
-use wgpu::{Device, Queue};
-
-use crate::sr_core::helpers::{BindGroupInfo, BindGroupKind, HasBindgroup};
+use wgpu::Queue;
 
 #[derive(Debug)]
 pub struct UniformBuffer {
@@ -19,10 +17,5 @@ impl UniformBuffer {
     }
     pub fn update<T: Pod>(&self, queue: &Queue, data: &[T]) {
         queue.write_buffer(&self.buffer, 0, bytemuck::cast_slice(data));
-    }
-}
-impl HasBindgroup for UniformBuffer {
-    fn info(&self, device: &Device) -> BindGroupInfo {
-        BindGroupInfo::new(device, &BindGroupKind::UNIFORM(&self.buffer))
     }
 }

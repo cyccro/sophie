@@ -4,11 +4,15 @@ struct Input {
 }
 struct Output {
     @builtin(position) position: vec4<f32>,
-    @location(0) uv: vec2<f32>
+    @location(0) uv: vec2<f32>,
 }
-
-@group(1) @binding(0)
-var<uniform> vpm: mat4x4<f32>;
+struct MaterialData {
+    color: vec4<f32>,
+    metallic: f32,
+    roguthness: f32,
+}
+@group(1) @binding(0) var<uniform> vpm: mat4x4<f32>;
+@group(2) @binding(0) var<uniform> data: MaterialData;
 @vertex
 fn vs_main(input: Input) -> Output {
     var output: Output;
@@ -22,5 +26,5 @@ var diffuse: texture_2d<f32>;
 var sdiff: sampler;
 @fragment
 fn fs_main(input: Output) -> @location(0) vec4<f32> {
-    return textureSample(diffuse, sdiff, input.uv);
+    return textureSample(diffuse, sdiff, input.uv) * data.metallic;
 }

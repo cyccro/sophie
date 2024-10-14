@@ -3,12 +3,12 @@ extern crate nalgebra as na;
 use std::process::ExitCode;
 
 use entities::Entities;
-use na::{Point3, UnitQuaternion, Vector3};
-use objects::drawables::Mesh;
+use math::{Rgba, Transform, Vec3};
+use na::Point3;
+use objects::{drawables::Mesh, ShaderInfo, ShaderVar};
 use sophie::Sophie;
 use sr_core::{
-    helpers::{BindGroupInfoKind, HasBindgroup},
-    SophieProgramDescriptor, TexturedVertex, Vertices,
+    helpers::BindGroupInfoKind, SophieProgramDescriptor, TexturedVertex, Vertex, Vertices,
 };
 use tests::TestHandler1;
 mod entities;
@@ -21,48 +21,71 @@ mod tests;
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    #[cfg(debug_assertions)]
     //tracing_subscriber::fmt::init();
     let sdl = sdl2::init().unwrap();
     let mut sophie = Sophie::new(&sdl, "Window", (1080, 720)).await.unwrap();
     let shader = sophie
         .wgpu
-        .create_shader_from_file(std::path::Path::new("./src/shaders/test5.wgsl"))
+        .create_shader_from_file(std::path::Path::new("./src/shaders/test4.wgsl"))
         .unwrap();
     let img = sophie
         .wgpu
         .create_texture_from_file(std::path::Path::new("./images/anime.jpeg"))
         .unwrap();
-    let vertices = Vertices::Textured(vec![
-        TexturedVertex::new(math::Vec3(-0.5, 0.5, 0.0), math::Vec2(0.0, 0.0)),
-        TexturedVertex::new(math::Vec3(0.5, 0.5, 0.0), math::Vec2(1.0, 0.0)),
-        TexturedVertex::new(math::Vec3(-0.5, -0.5, 0.0), math::Vec2(0.0, 1.0)),
-        TexturedVertex::new(math::Vec3(0.5, -0.5, 0.0), math::Vec2(1.0, 1.0)),
+    let vertices = Vertices::Vertex(vec![
+        Vertex::new(Vec3(-1.0, -1.0, -1.0), Rgba(1.0, 1.0, 0.0, 1.0)),
+        Vertex::new(Vec3(-1.0, -1.0, 1.0), Rgba(1.0, 1.0, 0.0, 1.0)),
+        Vertex::new(Vec3(-1.0, 1.0, -1.0), Rgba(0.0, 1.0, 1.0, 1.0)),
+        Vertex::new(Vec3(-1.0, 1.0, 1.0), Rgba(1.0, 0.0, 0.0, 1.0)),
+        Vertex::new(Vec3(1.0, -1.0, -1.0), Rgba(0.0, 1.0, 0.0, 1.0)),
+        Vertex::new(Vec3(1.0, -1.0, 1.0), Rgba(0.0, 0.0, 1.0, 1.0)),
+        Vertex::new(Vec3(1.0, 1.0, -1.0), Rgba(0.3, 0.7, 1.0, 1.0)),
+        Vertex::new(Vec3(1.0, 1.0, 1.0), Rgba(1.0, 0.5, 0.2, 1.0)),
     ]);
     let layout = vertices.layout();
     let camera = sophie.wgpu.create_perspective_camera(
-        Point3::new(0.0, 0.0, 1.0),
+        Point3::new(0.0, 2.0, 10.0),
         Point3::origin(),
-        40.0,
+        120.0,
         1000.0,
         0.1,
     );
-    sophie.wgpu.set_program_from(
-        &shader,
-        Some(SophieProgramDescriptor {
-            attribute_deffinitions: Some(vec![layout]),
-            info: vec![img.info(sophie.device())],
-            kinds: vec![BindGroupInfoKind::Texture, BindGroupInfoKind::Uniform],
-        }),
-    );
-    let mesh = Mesh::new(
+    let descriptor = SophieProgramDescriptor {
+        attribute_deffinitions: Some(vec![layout]),
+        groups: vec![
+            BindGroupInfoKind::Uniform(0),
+            BindGroupInfoKind::VfUniform(0),
+        ],
+    };
+    sophie
+        .wgpu
+        .add_program_from("shader", &shader, Some(&descriptor));
+    let mut mesh = Mesh::new(
         sophie.device(),
-        Vector3::new(0.0, 0.0, -1.0),
-        UnitQuaternion::identity(),
-        Vector3::new(1.0, 1.0, 1.0),
+        Transform::default(),
         vertices,
-        vec![2, 1, 0, 3, 1, 2],
+        vec![
+            1, 5, 7, 1, 7, 3, // Back face
+            0, 2, 6, 0, 6, 4, // Left face
+            0, 1, 3, 0, 3, 2, // Right face
+            4, 6, 7, 4, 7, 5, // Top face
+            2, 3, 7, 2, 7, 6, // Bottom face
+            0, 4, 5, 0, 5, 1,
+        ],
+        ShaderInfo {
+            vpm: ShaderVar {
+                group: 0,
+                binding: 0,
+            },
+            data: ShaderVar {
+                group: 1,
+                binding: 0,
+            },
+            texture: None,
+        },
+        "shader",
     );
+    mesh.translate(&na::Vector3::new(10.0, 0.0, 0.0));
     sophie.listen(
         &sdl,
         &mut TestHandler1 {

@@ -9,6 +9,7 @@ use super::{KeydownData, PressedKeys, SophieEventResult, SophieHandler};
 pub struct Sophie<'a> {
     id: u32,
     exit: bool,
+    window: sdl2::video::Window,
     pub wgpu: WgpuState<'a>,
     pub pressed_keys: PressedKeys,
     time: std::time::Instant,
@@ -24,8 +25,9 @@ impl<'a> Sophie<'a> {
             .unwrap();
         Ok(Self {
             id: window.id(),
-            time: std::time::Instant::now(),
             wgpu: WgpuState::new(&window).await?,
+            window,
+            time: std::time::Instant::now(),
             exit: false,
             pressed_keys: PressedKeys::new(),
         })
@@ -56,17 +58,20 @@ impl<'a> Sophie<'a> {
     pub fn should_exit(&mut self) {
         self.exit = true;
     }
+    pub fn sdl(&self) -> &sdl2::video::Window {
+        &self.window
+    }
     pub fn listen<E>(&mut self, sdl: &sdl2::Sdl, handler: &mut impl SophieHandler<E>) -> ExitCode {
         let mut evpump = sdl.event_pump().unwrap();
-        let mut window = false;
+        let mut normal_window = false;
         loop {
             if self.exit {
                 let mut cancel = false;
-                handler.before_exit(self, window, &mut cancel);
+                handler.before_exit(self, normal_window, &mut cancel);
                 if !cancel {
                     return ExitCode::from(1);
                 }
-                window = false;
+                normal_window = false;
             };
             let now = std::time::Instant::now();
             let dt = self.time - now;
@@ -90,7 +95,7 @@ impl<'a> Sophie<'a> {
                         }
                         WindowEvent::Close => {
                             self.exit = true;
-                            window = true;
+                            normal_window = true;
                         }
                         _ => {}
                     },

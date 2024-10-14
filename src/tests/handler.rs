@@ -26,7 +26,7 @@ impl SophieHandler<TestErrors> for TestHandler1 {
         self.entities
             .get_mut_mesh(0)
             .unwrap()
-            .rotate(UnitQuaternion::from_axis_angle(
+            .rotate(&UnitQuaternion::from_axis_angle(
                 &Vector3::z_axis(),
                 (1.0f32).to_radians(),
             ));
